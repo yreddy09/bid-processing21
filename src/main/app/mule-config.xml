@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" 
+  xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" 
+  xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" 
+  xmlns:spring="http://www.springframework.org/schema/beans" 
+  xmlns="http://www.mulesoft.org/schema/mule/core"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:file="http://www.mulesoft.org/schema/mule/file"
+  xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+  xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
+http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+
+  <flow name="AuctionService" >
+    <file:inbound-endpoint path="auction" doc:name="Read File auction" />
+    <object-to-string-transformer doc:name="Object to String"/>
+    <logger level="INFO" message="Consumed message: #[payload]" doc:name="Log Payload"/>
+    <logger level="INFO" message="At time: #[function:now]" doc:name="Log TimeStamp"/>
+    <component class="com.mulesoft.EnricherAuctionComponent" doc:name="EnrichBids Java Component"/>
+    <component class="com.mulesoft.HighestBidderAuctionComponent" doc:name="Highest Bidder Java Component"/>
+    <logger level="INFO" message="Highest Bidder: #[payload]" doc:name="Log Payload"/>
+    <logger level="INFO" message="At time: #[function:now]" doc:name="Log TimeStamp"/>
+    <!-- vm endpoint responsible for pushing result back to test -->
+    <vm:outbound-endpoint doc:name="VM: auction.service" exchange-pattern="one-way" path="auction.service"/>
+  </flow>
+
+</mule>
