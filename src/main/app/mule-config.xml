@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" 
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:metadata="http://www.mulesoft.org/schema/mule/metadata" xmlns:dw="http://www.mulesoft.org/schema/mule/ee/dw" 
   xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" 
   xmlns:tracking="http://www.mulesoft.org/schema/mule/ee/tracking" 
   xmlns:spring="http://www.springframework.org/schema/beans" 
@@ -13,19 +13,34 @@ http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/fil
 http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
 http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
 http://www.mulesoft.org/schema/mule/ee/tracking http://www.mulesoft.org/schema/mule/ee/tracking/current/mule-tracking-ee.xsd
-http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd">
+http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee/dw/current/dw.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+    <http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration"/>
 
   <flow name="AuctionService" >
-    <file:inbound-endpoint path="auction" doc:name="Read File auction" />
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/auction" doc:name="HTTP"/>
     <object-to-string-transformer doc:name="Object to String"/>
     <logger level="INFO" message="Consumed message: #[payload]" doc:name="Log Payload"/>
     <logger level="INFO" message="At time: #[function:now]" doc:name="Log TimeStamp"/>
-    <component class="com.mulesoft.EnricherAuctionComponent" doc:name="EnrichBids Java Component"/>
-    <component class="com.mulesoft.HighestBidderAuctionComponent" doc:name="Highest Bidder Java Component"/>
-    <logger level="INFO" message="Highest Bidder: #[payload]" doc:name="Log Payload"/>
-    <logger level="INFO" message="At time: #[function:now]" doc:name="Log TimeStamp"/>
+        <dw:transform-message doc:name="Transform Message" metadata:id="565d32f9-4f31-4c41-a5f5-c4f65d73bace">
+            <dw:input-payload mimeType="application/java"/>
+            <dw:set-payload><![CDATA[%dw 1.0
+%output application/java
+---
+payload splitBy "\n"]]></dw:set-payload>
+        </dw:transform-message>
+        <collection-splitter doc:name="Collection Splitter"/>
+        <vm:outbound-endpoint exchange-pattern="one-way" path="process" doc:name="VM"/>
     <!-- vm endpoint responsible for pushing result back to test -->
-    <vm:outbound-endpoint doc:name="VM: auction.service" exchange-pattern="one-way" path="auction.service"/>
   </flow>
+    <flow name="processBids">
+        <vm:inbound-endpoint exchange-pattern="one-way"  path="process" doc:name="VM"/>
+        <component class="com.mulesoft.EnricherAuctionComponent" doc:name="EnrichBids Java Component"/>
+        <collection-aggregator failOnTimeout="true" doc:name="Collection Aggregator"/>
+        <component class="com.mulesoft.HighestBidderAuctionComponent" doc:name="Highest Bidder Java Component"/>
+        <logger message="Highest Bidder: #[payload]" level="INFO" doc:name="Log Payload"/>
+        <logger message="At time: #[function:now]" level="INFO" doc:name="Log TimeStamp"/>
+        <vm:outbound-endpoint exchange-pattern="one-way" path="auction.service" doc:name="VM: auction.service"/>
+    </flow>
 
 </mule>
