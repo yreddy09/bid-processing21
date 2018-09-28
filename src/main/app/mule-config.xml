@@ -13,18 +13,19 @@ http://www.mulesoft.org/schema/mule/ee/dw http://www.mulesoft.org/schema/mule/ee
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
 	<http:listener-config name="HTTP_Listener_Configuration" host="0.0.0.0" port="8081" doc:name="HTTP Listener Configuration" />
 
-	<flow name="AuctionService">
-		<http:listener config-ref="HTTP_Listener_Configuration" path="/auction" doc:name="HTTP" />
-		<object-to-string-transformer doc:name="Object to String" />
-		<logger level="INFO" message="Consumed message: #[payload]" doc:name="Log Payload" />
-		<logger level="INFO" message="At time: #[function:now]" doc:name="Log TimeStamp" />
-		<request-reply doc:name="Request-Reply" >
-            <vm:outbound-endpoint exchange-pattern="one-way" path="split" doc:name="VM - split"/>
-            <vm:inbound-endpoint exchange-pattern="one-way" path="auction.service" doc:name="VM: auction.service"/>
+  <flow name="AuctionService" >
+        <http:listener config-ref="HTTP_Listener_Configuration" path="/auction" doc:name="HTTP"/>
+    <object-to-string-transformer doc:name="Object to String"/>
+    <logger level="INFO" message="Consumed message: #[payload]" doc:name="Log Payload"/>
+    <logger level="INFO" message="At time: #[function:now]" doc:name="Log TimeStamp"/>
+        <request-reply doc:name="Request-Reply">
+            <vm:outbound-endpoint exchange-pattern="one-way" path="split" doc:name="split">
+            		<remove-property propertyName="MULE_REPLYTO"></remove-property>
+            </vm:outbound-endpoint>
+            <vm:inbound-endpoint exchange-pattern="one-way" path="auction.service" doc:name="auction-service"/>
         </request-reply>
         <set-payload value="#['{ &quot;winner&quot; : &quot;' + payload + '&quot; }']" doc:name="Set Payload"/>
-		<!-- vm endpoint responsible for pushing result back to test -->
-	</flow>
+  </flow>
 
 	<flow name="splitBids">
 		<vm:inbound-endpoint exchange-pattern="one-way" path="split" doc:name="VM - split" />
